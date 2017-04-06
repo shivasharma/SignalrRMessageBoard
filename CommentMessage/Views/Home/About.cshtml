@@ -1,0 +1,50 @@
+﻿@{
+    ViewBag.Title = "About";
+}
+
+
+<script src="~/Scripts/jquery-3.1.1.min.js"></script>
+<script src="~/Scripts/knockout-3.4.1.js"></script>
+<script src="~/Scripts/jquery.signalR-2.2.1.min.js"></script>
+<script src="~/signalr/hubs" type="text/javascript"></script>
+<script>
+
+     resultsHub = $.connection.resultsHub;
+    var messageModel = function () {
+           
+    this.registeredMessage = ko.observable(""),
+    this.registeredMessageList = ko.observableArray();
+  
+messageModel.prototype = {
+
+        newMessage: function () {
+            resultsHub.server.sendMessage(this.registeredMessage());
+            this.registeredMessage("");
+        },
+        addMessageToList: function (message) {
+            this.registeredMessageList.push(message);
+        }
+};
+
+};
+
+$(function () {
+    var viewModel = new messageModel();
+    ko.applyBindings(viewModel);
+   
+    resultsHub.client.registerMessage = function (message) {
+        viewModel.addMessageToList(message);
+    };
+    });
+
+</script>
+<div>
+    <input type="text" placeholder="Your message..." data-bind="value:registeredMessage" />
+    <button data-bind="click:$root.newMessage">Register message</button>
+</div>
+
+<div>
+    <div data-bind="foreach:registeredMessageList">
+        <div data-bind="text: $data"></div>
+    </div>
+</div>

@@ -1,0 +1,254 @@
+﻿@{
+    ViewBag.Title = "Home Page";
+}
+<script src="~/Scripts/jquery-3.1.1.min.js"></script>
+<script src="~/Scripts/bootstrap.js"></script>
+<script src="~/Scripts/knockout-3.4.1.js"></script>
+<script src="~/Scripts/jquery.signalR-2.2.1.min.js"></script>
+<script src="~/signalr/hubs" type="text/javascript"></script>
+<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
+<link href="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css" rel="stylesheet">
+<div class="jumbotron">
+    <h1>Page Hit Count</h1>
+    <p id="pageCount"></p>
+    
+   
+</div>
+<div class="container" id="container">
+    <div class="col-md-5" data-bind="foreach:topics">
+        <div class="panel panel-default">
+            <div class="panel-body">
+                <section class="post-heading">
+                    <div class="row">
+                        <div class="col-md-11">
+                            <div class="media">
+                                <div class="media-left">
+                                    <a href="#">
+                                        <img class="media-object photo-profile" src="http://0.gravatar.com/avatar/38d618563e55e6082adf4c8f8c13f3e4?s=40&d=mm&r=g" width="40" height="40" alt="...">
+                                    </a>
+                                </div>
+                                <div class="media-body">
+                                    <a href="#" class="anchor-username">
+                                        <h4 class="media-heading" data-bind="text:title"></h4>
+                                    </a>
+
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-1">
+                            <a href="#"><i class="glyphicon glyphicon-chevron-down"></i></a>
+                        </div>
+                    </div>
+                </section>
+                <section class="post-body">
+                    <p data-bind="text:body"></p>
+                </section>
+                <section class="post-footer">
+                    <hr>
+                    <div class="post-footer-option container">
+                        <ul class="list-unstyled">
+                            <li><a href="#"><i class="glyphicon glyphicon-thumbs-up"></i> Like</a></li>
+                            <li><a href="#" data-bind="click:$parent.comment"><i class="glyphicon glyphicon-comment"></i> Comments(<span data-bind="text:replies.length"></span>)</a></li>
+                            <li><a href="#"><i class="glyphicon glyphicon-share-alt"></i> Share</a></li>
+                        </ul>
+                    </div>
+                    <div class="post-footer-comment-wrapper">
+                        <div class="publishComment">
+
+                            <div class="form-inline">
+                                <div class="form-group">
+                                    <input name="txtcomment" class="form-control" type="text" placeholder="Your comments" />
+                                </div>
+                                <div class="form-group">
+                                    <button class="btn btn-default" data-bind="click:$root.addComment">Add</button>
+                                </div>
+                            </div>
+
+
+                        </div>
+                        <br />
+                        <div class="comment" data-bind="foreach:$data.replies">
+                            <div class="media">
+                                <div class="media-left">
+                                    <a href="#">
+                                        <img class="media-object photo-profile" src="http://0.gravatar.com/avatar/38d618563e55e6082adf4c8f8c13f3e4?s=40&d=mm&r=g" width="32" height="32" alt="...">
+                                    </a>
+                                </div>
+                                <div class="media-body">
+                                    <a href="#" class="anchor-username"><h6 class="media-heading" data-bind="text:body"></h6></a>
+                                    <a href="#" class="anchor-time"><span data-bind="text:created"></span></a>
+
+                                    <a href="#" class="anchor-time"><i class="glyphicon glyphicon-pencil"></i><span data-bind="click:$root.editComment"> Edit</span></a>
+                             
+                                    <a href="#" class="anchor-time"><i class="glyphicon glyphicon-trash"></i><span data-bind="click:$root.deleteComment"> Delete</span></a>
+                                    
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </section>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="container text-center">
+  
+    <button class="success btn btn-success">Success</button>
+ 
+</div>
+
+<script type="text/javascript">
+	$(".success").click(function() {
+	    toastr.success('We do have the Kapua suite available.', 'Success Alert', { timeOut: 5000 });
+	});
+
+</script>
+<script>
+    
+    $(function () {
+        var con = $.hubConnection();
+        var hub = con.createHubProxy('toDoHub');
+        hub.on('hitCounted', function (hitCount) {
+            $('#pageCount').text(hitCount);
+        });
+        con.start();
+    });
+
+    function ClickCounterViewModel() {
+       
+        var self = this;
+       
+
+        self.topics = ko.observableArray([]);
+        self.reply = ko.observable();
+        var url = "/api/v1/topics?includeReplies=true";
+        self.getTopics = function () {
+            $.ajax({
+                url: url,
+                type: "GET",
+                dataType: "json",
+                contentType: 'application/json; charset=utf-8',
+                success: function (response) {
+                    debugger;
+                    self.topics(response);
+                },
+                error: function (respone) {
+                    debugger;
+                    alert(respone);
+                }
+            });
+        }
+        self.comment = function (item, event) {
+
+            $parent_box = $(this).closest('.post-footer-comment-wrapper');
+            $parent_box.siblings().find('.publishComment').hide();
+            $parent_box.find('.publishComment').toggle();
+
+        }
+        self.addComment = function (item) {
+            debugger;
+            var reply = $('input:text[name=txtcomment]').val();
+            var newReply = { body: reply, topicid: item.id };
+            var url = "/api/v1/topics/"+item.id+"/replies";
+            $.ajax({
+                url: url,
+                type: 'POST',
+                dataType: 'json',
+                contentType: "application/json",
+                data: JSON.stringify(newReply),
+                success: function (data, textStatus, xhr) {
+                    // self.getTopics();
+                    console.log(data);
+                },
+                error: function (xhr, textStatus, errorThrown) {
+                    console.log('Error in Operation');
+                }
+            });
+
+        }
+        self.deleteComment = function (item) {
+            
+            var reply = { id: item.id, topicid: item.topicId };
+            $.ajax({
+                url: "/api/v1/topics/replies",
+                type: "DELETE",
+                data: reply,
+                success: function (data, textStatus, xhr) {
+                    console.log(data);
+                },
+                error: function (xhr, textStatus, errorThrown) {
+                    console.log('Error in Operation');
+                }
+            });
+        }
+
+        self.editComment = function (item) {
+
+            debugger;
+            var reply = { id: item.id, topicid: item.topicId, Body:item.body};
+            $.ajax({
+                url: "/api/v1/topics/replies",
+                type: "UPDATE",
+                data: reply,
+                success: function (data, textStatus, xhr) {
+                    console.log(data);
+                },
+                error: function (xhr, textStatus, errorThrown) {
+                    console.log('Error in Operation');
+                }
+            });
+        }
+    };
+
+
+    $(function() {
+      
+       
+
+        var viewModel = new ClickCounterViewModel();
+        var hub = $.connection.toDoHub;
+
+        hub.on('hitCounted', function (hitCount) {
+            $('#pageCount').text(hitCount);
+        });
+
+        
+        hub.client.addItem = function(item) {
+            debugger;
+            viewModel.addComment(item);
+            console.log("hub add comment");
+            toastr.success('Adding comment....' , 'Comment Added', { timeOut: 3000 });
+            viewModel.getTopics();
+        };
+       
+        hub.client.deleteItem = function (item) {
+            debugger;
+            viewModel.deleteComment(item);
+            console.log("hub delete comment");
+            toastr.error('Deleting comment.... ', 'Comment Deleted', { timeOut: 3000 });
+            viewModel.getTopics();
+        };
+
+
+        hub.client.editItem = function (item) {
+            debugger;
+            viewModel.editComment(item);
+            console.log("hub edit comment");
+            viewModel.getTopics();
+        };
+
+
+
+        $.connection.hub.start(function () {
+            console.log("hub started");
+           
+        });
+
+        viewModel.getTopics();
+        ko.applyBindings(viewModel);
+
+    });
+
+
+</script>
